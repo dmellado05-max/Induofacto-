@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>html{color-scheme:light}body{margin:0}[hidden]{display:none!important}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
+<title>Cuenta regresiva Induofacto</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: una sola columna alineada a la izquierda; cifras enormes en rejilla de 4 (2x2 en teléfono), barra de avance, regla de días y un panel de edición que se abre bajo el encabezado. */
+  :root {
+    --bg: #EEF1F7;
+    --surface: #FFFFFF;
+    --fg: #12182E;
+    --muted: #5B6479;
+    --line: #D3D9E6;
+    --accent: #2B3BFF;
+    --accent-ink: #FFFFFF;
+    --urgent: #C2410C;
+    --font-display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "DM Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0D1121;
+      --surface: #151B30;
+      --fg: #EDF0FA;
+      --muted: #9AA4C0;
+      --line: #28304D;
+      --accent: #8C99FF;
+      --accent-ink: #0D1121;
+      --urgent: #FDBA74;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0D1121;
+    --surface: #151B30;
+    --fg: #EDF0FA;
+    --muted: #9AA4C0;
+    --line: #28304D;
+    --accent: #8C99FF;
+    --accent-ink: #0D1121;
+    --urgent: #FDBA74;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-display);
+    font-size: 16px;
+    line-height: 1.5;
+    padding-block: 40px 48px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .wrap { max-width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 32px; }
+
+  .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+  .top > div { min-width: 0; }
+  .kicker {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0;
+  }
+  h1 {
+    font-size: clamp(34px, 7vw, 64px);
+    line-height: 1.02;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 8px 0 0;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+  }
+  .lede { margin: 12px 0 0; color: var(--muted); max-width: 52ch; text-wrap: pretty; }
+
+  button { font: inherit; cursor: pointer; }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .edit-btn {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 9px 14px;
+  }
+  .edit-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .editor {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .editor h2 { margin: 0; font-size: 20px; letter-spacing: -0.01em; }
+  .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .field.wide { grid-column: 1 / -1; }
+  .field label {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .field input {
+    font: inherit;
+    font-size: 16px;
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 10px 12px;
+    width: 100%;
+    min-width: 0;
+  }
+  .hint { margin: 0; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  .btn {
+    font-weight: 700;
+    border-radius: 6px;
+    padding: 10px 18px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--fg);
+  }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn:hover { border-color: var(--accent); }
+  .msg { margin: 0; font-size: 14px; color: var(--urgent); min-height: 1.2em; }
+
+  .clock {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .cell {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 16px 16px 14px;
+    min-width: 0;
+  }
+  .num {
+    display: block;
+    font-weight: 800;
+    font-size: clamp(44px, 13vw, 112px);
+    line-height: 1;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+    color: var(--fg);
+  }
+  .cell.is-seconds .num { color: var(--accent); }
+  .lab {
+    display: block;
+    margin-top: 10px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  body.urgent .cell.is-seconds .num { color: var(--urgent); }
+
+  .progress { display: flex; flex-direction: column; gap: 10px; }
+  .bar { height: 10px; background: var(--line); border-radius: 2px; overflow: hidden; }
+  .fill { height: 100%; width: 0%; background: var(--accent); transition: width 0.6s ease; }
+  body.urgent .fill { background: var(--urgent); }
+  .bar-meta {
+    display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    font-family: var(--font-mono); font-size: 13px; color: var(--muted);
+  }
+  .bar-meta b { font-weight: 500; color: var(--fg); font-variant-numeric: tabular-nums; }
+
+  .days { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+  .day {
+    border-top: 3px solid var(--line);
+    padding-top: 8px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .day strong { display: block; font-family: var(--font-display); font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; color: var(--fg); }
+  .day.past { opacity: 0.45; }
+  .day.past strong { text-decoration: line-through; text-decoration-thickness: 2px; }
+  .day.today { border-top-color: var(--accent); color: var(--accent); }
+  .day.last { border-top-color: var(--fg); }
+  .day small { display: block; margin-top: 2px; font-size: 11px; letter-spacing: 0.04em; text-transform: none; color: var(--muted); }
+
+  .done {
+    display: none;
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-radius: 6px;
+    padding: 20px;
+    font-weight: 800;
+    font-size: clamp(28px, 8vw, 84px);
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+    overflow-wrap: anywhere;
+  }
+  body.finished .done { display: block; }
+  body.finished .clock, body.finished .progress { display: none; }
+  body.finished .days { opacity: 0.6; }
+  .done { position: relative; z-index: 6; }
+  #fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+
+  .foot { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin: 0; }
+
+  @media (max-width: 560px) {
+    .clock { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .num { font-size: clamp(52px, 20vw, 88px); }
+    .days { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 14px; }
+    .fields { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (prefers-reduced-motion: reduce) { .fill { transition: none; } }
+</style>
+
+</head>
+<body>
+<canvas id="fx" hidden aria-hidden="true"></canvas>
+
+<main class="wrap">
+  <header class="top">
+    <div>
+      <h1 id="title">Último día del centro de estudiantes induofacto</h1>
+    </div>
+  </header>
+
+  <div class="done" id="done" role="status">LIBERTAAAAAAAAD</div>
+
+  <ul class="clock" id="clock" role="timer" aria-label="Tiempo restante hasta el cierre">
+    <li class="cell"><span class="num" id="d">--</span><span class="lab">Días</span></li>
+    <li class="cell"><span class="num" id="h">--</span><span class="lab">Horas</span></li>
+    <li class="cell"><span class="num" id="m">--</span><span class="lab">Minutos</span></li>
+    <li class="cell is-seconds"><span class="num" id="s">--</span><span class="lab">Segundos</span></li>
+  </ul>
+
+  <section class="progress" aria-label="Avance del tiempo">
+    <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="bar"><div class="fill" id="fill"></div></div>
+  </section>
+
+  <ol class="days" id="days" aria-label="Días hasta el cierre"></ol>
+
+</main>
+
+<script>
+(function () {
+  var TZ = "America/Santiago";
+  var URGENT_MS = 24 * 3600 * 1000;
+  var MAX_DAYS = 14;
+
+  // Valores originales: cierre el vie 30 oct 2026 a las 24:00 (se escribe 23:59 en el formulario).
+  var DEFAULTS = {
+    title: "Último día del centro de estudiantes induofacto",
+    date: "2026-10-30",
+    time: "23:59",
+    start: null
+  };
+
+  function $(id) { return document.getElementById(id); }
+  var el = {
+    title: $("title"),
+    d: $("d"), h: $("h"), m: $("m"), s: $("s"),
+    fill: $("fill"), bar: $("bar"), days: $("days")
+  };
+  var pad = function (n) { return String(n).padStart(2, "0"); };
+
+  // Hora de Chile, con horario de verano e invierno.
+  var partsFmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ, hourCycle: "h23", year: "numeric", month: "2-digit",
+    day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit"
+  });
+  function offsetAt(ts) {
+    var o = {};
+    partsFmt.formatToParts(new Date(ts)).forEach(function (p) { o[p.type] = p.value; });
+    var asUtc = Date.UTC(+o.year, +o.month - 1, +o.day, +o.hour, +o.minute, +o.second);
+    return asUtc - Math.floor(ts / 1000) * 1000;
+  }
+  function chileToEpoch(dateStr, timeStr) {
+    var dp = dateStr.split("-").map(Number);
+    var tp = timeStr.split(":").map(Number);
+    var wall = Date.UTC(dp[0], dp[1] - 1, dp[2], tp[0], tp[1], 0);
+    var e = wall - offsetAt(wall);
+    e = wall - offsetAt(e);
+    return e;
+  }
+  var dayKeyFmt = new Intl.DateTimeFormat("en-CA", { timeZone: TZ });
+  function dayKey(ts) { return dayKeyFmt.format(new Date(ts)); }
+
+  var state = DEFAULTS;
+  var END = 0, START = 0, endKey = "", lastKey = "", dayEls = [];
+
+  function fmtTime(t) { return t === "23:59" ? "24:00" : t; }
+
+  function apply() {
+    var endClose = chileToEpoch(state.date, state.time) + (state.time === "23:59" ? 60000 : 0);
+    END = endClose;
+    START = state.start !== null && state.start < END ? state.start : chileToEpoch(DEFAULTS.date, "00:00") - 5 * 86400000;
+    if (state.start === null) START = chileToEpoch("2026-10-25", "00:00");
+    if (START >= END) START = END - 7 * 86400000;
+
+    el.title.textContent = state.title;
+
+    var endKeyStr = dayKey(END - 1000);
+    endKey = endKeyStr;
+
+    // Regla de días desde el inicio hasta el cierre
+    var startKey = dayKey(START);
+    var keys = [];
+    var cursor = new Date(startKey + "T12:00:00Z");
+    var guard = 0;
+    while (dayKey(cursor.getTime()) <= endKeyStr && guard < 400) {
+      keys.push(cursor.toISOString().slice(0, 10));
+      cursor = new Date(cursor.getTime() + 86400000);
+      guard++;
+    }
+    var wd = new Intl.DateTimeFormat("es-CL", { timeZone: "UTC", weekday: "short" });
+    if (keys.length === 0 || keys.length > MAX_DAYS) {
+      el.days.innerHTML = "";
+      el.days.hidden = true;
+    } else {
+      el.days.hidden = false;
+      el.days.style.gridTemplateColumns = "";
+      el.days.innerHTML = keys.map(function (k, i) {
+        var last = i === keys.length - 1;
+        var dt = new Date(k + "T12:00:00Z");
+        return '<li class="day' + (last ? " last" : "") + '" data-key="' + k + '">' +
+          wd.format(dt).replace(".", "") + "<strong>" + dt.getUTCDate() + "</strong>" +
+          (last ? "<small>cierra " + fmtTime(state.time) + "</small>" : "") + "</li>";
+      }).join("");
+    }
+    dayEls = Array.prototype.slice.call(el.days.children);
+    lastKey = "";
+    document.body.classList.remove("finished", "urgent");
+  }
+
+  function markDays(now) {
+    var key = dayKey(now);
+    if (key === lastKey) return;
+    lastKey = key;
+    dayEls.forEach(function (li) {
+      var k = li.getAttribute("data-key");
+      li.classList.toggle("past", k < key);
+      li.classList.toggle("today", k === key);
+    });
+  }
+
+  function tick() {
+    var now = Date.now();
+    var left = END - now;
+    markDays(now);
+    if (left <= 0) {
+      document.body.classList.add("finished");
+      document.body.classList.remove("urgent");
+      fxStart();
+      return;
+    }
+    document.body.classList.remove("finished");
+    fxStop();
+    var total = Math.floor(left / 1000);
+    el.d.textContent = pad(Math.floor(total / 86400));
+    el.h.textContent = pad(Math.floor((total % 86400) / 3600));
+    el.m.textContent = pad(Math.floor((total % 3600) / 60));
+    el.s.textContent = pad(total % 60);
+
+    var p = Math.min(100, Math.max(0, ((now - START) / (END - START)) * 100));
+    el.fill.style.width = p.toFixed(2) + "%";
+    el.bar.setAttribute("aria-valuenow", Math.round(p));
+    document.body.classList.toggle("urgent", left <= URGENT_MS);
+  }
+
+  // Fuegos artificiales al llegar a cero
+  var fxCanvas = $("fx");
+  var fxCtx = fxCanvas.getContext("2d");
+  var fxOn = false, fxRockets = [], fxSparks = [], fxLast = 0, fxNext = 0, fxW = 0, fxH = 0;
+  var reduceMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+  function fxResize() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    fxW = window.innerWidth;
+    fxH = window.innerHeight;
+    fxCanvas.width = Math.round(fxW * dpr);
+    fxCanvas.height = Math.round(fxH * dpr);
+    fxCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  function fxBurst(x, y) {
+    var hue = Math.random() * 360;
+    var n = 70 + Math.floor(Math.random() * 40);
+    for (var i = 0; i < n; i++) {
+      var a = Math.random() * Math.PI * 2;
+      var sp = 1 + Math.random() * 4.2;
+      fxSparks.push({
+        x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+        life: 1, decay: 0.008 + Math.random() * 0.012,
+        hue: hue + (Math.random() * 50 - 25)
+      });
+    }
+  }
+  function fxFrame(t) {
+    if (!fxOn) return;
+    var dt = Math.min(40, t - (fxLast || t)) / 16.67;
+    fxLast = t;
+    fxCtx.clearRect(0, 0, fxW, fxH);
+
+    if (t > fxNext) {
+      fxRockets.push({
+        x: fxW * (0.12 + Math.random() * 0.76), y: fxH,
+        vy: -(7 + Math.random() * 3), targetY: fxH * (0.15 + Math.random() * 0.3)
+      });
+      fxNext = t + 350 + Math.random() * 500;
+    }
+    for (var i = fxRockets.length - 1; i >= 0; i--) {
+      var r = fxRockets[i];
+      r.y += r.vy * dt;
+      fxCtx.strokeStyle = "hsla(45, 100%, 70%, 0.8)";
+      fxCtx.lineWidth = 2;
+      fxCtx.beginPath();
+      fxCtx.moveTo(r.x, r.y);
+      fxCtx.lineTo(r.x, r.y + 14);
+      fxCtx.stroke();
+      if (r.y <= r.targetY) {
+        fxBurst(r.x, r.y);
+        fxRockets.splice(i, 1);
+      }
+    }
+    for (var j = fxSparks.length - 1; j >= 0; j--) {
+      var p = fxSparks[j];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 0.05 * dt;
+      p.vx *= 0.99;
+      p.life -= p.decay * dt;
+      if (p.life <= 0) { fxSparks.splice(j, 1); continue; }
+      fxCtx.fillStyle = "hsla(" + p.hue + ", 100%, 60%, " + p.life.toFixed(2) + ")";
+      fxCtx.beginPath();
+      fxCtx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
+      fxCtx.fill();
+    }
+    requestAnimationFrame(fxFrame);
+  }
+  function fxStart() {
+    if (fxOn || reduceMotion) return;
+    fxOn = true;
+    fxCanvas.hidden = false;
+    fxResize();
+    fxLast = 0;
+    fxNext = 0;
+    requestAnimationFrame(fxFrame);
+  }
+  function fxStop() {
+    if (!fxOn) return;
+    fxOn = false;
+    fxCanvas.hidden = true;
+    fxRockets = [];
+    fxSparks = [];
+  }
+  window.addEventListener("resize", function () { if (fxOn) fxResize(); });
+
+  apply();
+  tick();
+  setInterval(tick, 250);
+})();
+</script>
+</body>
+</html>
